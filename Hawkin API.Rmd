@@ -1,0 +1,42 @@
+---
+title: "Hawkin API Import"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(hawkinR)
+library(dplyr)
+```
+
+```{r}
+api_url <- "https://cloud.hawkindynamics.com/api"
+
+refreshToken <- "YCOShw.nZAnDlsYMlw8eW16Nr82DkwlKe66g"
+
+get_access(refreshToken, region = "Americas")
+```
+
+
+```{r}
+# types of tests 
+testIds <- get_testTypes()
+testIds
+
+# only keep tests from june 3rd, 2024 
+fromDate <- as.numeric(as.POSIXct("2024-06-03", tz = "UTC"))
+# only keep CMJ tests 
+testId <- "7nNduHeM5zETPjHxvm7s" 
+
+# create df with tests 
+cmj_tests <- get_tests(typeId = testId, from = fromDate)
+# head(cmj_tests)
+# summary(cmj_tests)
+unique(cmj_tests$testType_name) 
+
+cmj_tests <- cmj_tests %>%
+  filter(testType_name %in% c("Countermovement Jump", "Countermovement Jump-CMJ"))
+
+# summary(cmj_tests) 
+# 6453 CMJ tests since June 3rd
+```
+
