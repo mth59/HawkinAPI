@@ -46,7 +46,7 @@ cmj_tests <- cmj_tests %>%
 
 
 ```{r}
-# use numeric columns only 
+# using numeric columns only 
 data_numeric <- dplyr::select_if(cmj_tests, is.numeric)
 
 data_numeric <- data_numeric %>% 
@@ -66,7 +66,6 @@ cov_with_jump_height <- cov_matrix_numeric[, "jump_height_m"]
 cor_with_jump_height <- cor_matrix_numeric[, "jump_height_m"]
 # cor_with_jump_height
 
-# manually assign meaningful row names if they are missing
 metric_names <- rownames(cov_matrix_numeric)
 
 # create df and export to excel 
