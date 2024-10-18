@@ -6,6 +6,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(hawkinR)
 library(dplyr)
+library(writexl)
 ```
 
 ```{r}
@@ -34,9 +35,40 @@ cmj_tests <- get_tests(typeId = testId, from = fromDate)
 unique(cmj_tests$testType_name) 
 
 cmj_tests <- cmj_tests %>%
-  filter(testType_name %in% c("Countermovement Jump", "Countermovement Jump-CMJ"))
+  filter(testType_name %in% c("Countermovement Jump", "Countermovement Jump-CMJ")) # %>% 
+  #select(-athlete_c_mfsh_xql_ex_qvagn_q_zn1jcfsvloo2)
+
+#cmj_tests <- na.omit(cmj_tests)
 
 # summary(cmj_tests) 
 # 6453 CMJ tests since June 3rd
+```
+
+
+```{r}
+# use numeric columns only 
+data_numeric <- dplyr::select_if(cmj_tests, is.numeric)
+
+data_numeric <- data_numeric %>% 
+  select(-timestamp, -last_test_time, -last_sync_time)
+
+data_numeric <- na.omit(data_numeric)
+
+nrow(data_numeric)
+
+# covariance matrix for numeric columns
+cov_matrix_numeric <- cov(data_numeric)
+
+# extract covariances related to the column jump_height_m
+cov_with_jump_height <- cov_matrix_numeric[, "jump_height_m"]
+cov_with_jump_height
+
+# manually assign meaningful row names if they are missing
+metric_names <- rownames(cov_matrix_numeric)
+
+# create df and export to excel 
+cov_df <- data.frame(Metric = metric_names, Covariance = cov_with_jump_height)
+write_xlsx(cov_df, path = "cov_with_jump_height.xlsx")
+
 ```
 
