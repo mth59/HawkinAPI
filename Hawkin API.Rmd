@@ -23,7 +23,7 @@ get_access(refreshToken, region = "Americas")
 testIds <- get_testTypes()
 testIds
 
-# only keep tests from june 3rd, 2024 
+# only keep tests starting from june 3rd, 2024 
 fromDate <- as.numeric(as.POSIXct("2024-06-03", tz = "UTC"))
 # only keep CMJ tests 
 testId <- "7nNduHeM5zETPjHxvm7s" 
@@ -56,19 +56,27 @@ data_numeric <- na.omit(data_numeric)
 
 nrow(data_numeric)
 
-# covariance matrix for numeric columns
+# covariance & correlation matrix for numeric columns
 cov_matrix_numeric <- cov(data_numeric)
+cor_matrix_numeric <- cor(data_numeric)
 
-# extract covariances related to the column jump_height_m
+# extract covariances & correlations related to the column jump_height_m
 cov_with_jump_height <- cov_matrix_numeric[, "jump_height_m"]
-cov_with_jump_height
+# cov_with_jump_height
+cor_with_jump_height <- cor_matrix_numeric[, "jump_height_m"]
+# cor_with_jump_height
 
 # manually assign meaningful row names if they are missing
 metric_names <- rownames(cov_matrix_numeric)
 
 # create df and export to excel 
-cov_df <- data.frame(Metric = metric_names, Covariance = cov_with_jump_height)
-write_xlsx(cov_df, path = "cov_with_jump_height.xlsx")
+cov_cor_df <- data.frame(
+  Metric = metric_names,
+  Covariance = cov_with_jump_height,
+  Correlation = cor_with_jump_height
+)
+
+write_xlsx(cov_cor_df, path = "Covariances and Correlations to Jump Height.xlsx")
 
 ```
 
