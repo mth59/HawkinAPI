@@ -7,6 +7,7 @@ output: html_document
 library(hawkinR)
 library(dplyr)
 library(writexl)
+library(cmstatr)
 ```
 
 ```{r}
@@ -52,30 +53,130 @@ data_numeric <- dplyr::select_if(cmj_tests, is.numeric)
 data_numeric <- data_numeric %>% 
   select(-timestamp, -last_test_time, -last_sync_time)
 
+
+# Taking out these 2 rows gives us 3840 more jumps of data 
+data_numeric <- data_numeric %>% 
+  select(-time_to_stabilization_ms, -l_r_landing_impulse_index_percent)
+
+
+# summary(data_numeric)
+
 data_numeric <- na.omit(data_numeric)
+
+# summary(data_numeric)
 
 nrow(data_numeric)
 
-# covariance & correlation matrix for numeric columns
-cov_matrix_numeric <- cov(data_numeric)
+data_numeric <- data_numeric %>%
+  mutate(across(everything(), as.double))
+
+data_numeric <- data_numeric %>%
+  mutate(left_force_at_peak_propulsive_force_n = as.double(left_force_at_peak_propulsive_force_n)) %>%
+  mutate(right_force_at_peak_braking_force_n = as.double(right_force_at_peak_braking_force_n)) %>%
+  mutate(force_at_min_displacement_n = as.double(force_at_min_displacement_n)) %>%
+  mutate(peak_landing_force_n = as.double(peak_landing_force_n)) %>%
+  mutate(peak_braking_force_n = as.double(peak_braking_force_n)) %>%
+  mutate(right_force_at_peak_propulsive_force_n = as.double(right_force_at_peak_propulsive_force_n)) %>%
+  mutate(right_force_at_peak_landing_force_n = as.double(right_force_at_peak_landing_force_n))%>%
+  mutate(peak_propulsive_force_n = as.double(peak_propulsive_force_n)) %>%
+  mutate(left_force_at_peak_landing_force_n = as.double(left_force_at_peak_landing_force_n)) %>%
+  mutate(left_force_at_peak_braking_force_n = as.double(left_force_at_peak_braking_force_n))
+
+
+```
+### 2708 tests with non NA values in "time_to_stabilization_ms" and "l_r_landing_impulse_index_percent"  
+
+### Without them, we have 6548 tests of data 
+
+
+```{r}
+# correlation matrix for numeric columns
 cor_matrix_numeric <- cor(data_numeric)
 
-# extract covariances & correlations related to the column jump_height_m
-cov_with_jump_height <- cov_matrix_numeric[, "jump_height_m"]
-# cov_with_jump_height
+# extract correlation of each variable with jump height (from cor_matrix_numeric)
 cor_with_jump_height <- cor_matrix_numeric[, "jump_height_m"]
-# cor_with_jump_height
 
-metric_names <- rownames(cov_matrix_numeric)
+# function to find coefficient of variance 
+cv_manual <- function(x) {
+  if (mean(x, na.rm = TRUE) == 0) {
+    return(NA)  
+  }
+  sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)
+}
+
+valid_rows <- !is.na(data_numeric$jump_height_m)
+
+# calculate coefficient of variance for each metric compared to jump height
+cv_compared_to_jump_height <- sapply(data_numeric[valid_rows, ], function(var) {
+  cv_manual(var[valid_rows])  
+})
+
+metric_names <- rownames(cor_matrix_numeric)
 
 # create df and export to excel 
 cov_cor_df <- data.frame(
   Metric = metric_names,
-  Covariance = cov_with_jump_height,
-  Correlation = cor_with_jump_height
+  Correlation = cor_with_jump_height,
+  CoeffiecientOfVariance = cv_compared_to_jump_height
 )
 
-write_xlsx(cov_cor_df, path = "Covariances and Correlations to Jump Height.xlsx")
+write_xlsx(cov_cor_df, path = "Correlation_CoefOfVar_To_JumpHeight.xlsx")
 
 ```
+
+```{r}
+# keep columns we need 
+compare_to_rfd <- data_numeric %>% 
+  select("braking_rfd_n_s", "peak_braking_force_n", "time_to_takeoff_s", "braking_net_impulse_n_s", 
+         "peak_braking_velocity_m_s", "peak_braking_power_w", "m_rsi")
+
+# correlation matrix for remaining columns
+cor_matrix_numeric1 <- cor(compare_to_rfd)
+
+# extract correlation of each variable with breaking rfd 
+cor_with_rfd <- cor_matrix_numeric1[, "braking_rfd_n_s"]
+
+valid_rows1 <- !is.na(compare_to_rfd$braking_rfd_n_s)
+
+# calculate coefficient of variance for each metric compared to breaking rfd 
+cv_compared_to_rfd <- sapply(compare_to_rfd[valid_rows1, ], function(var) {
+  cv_manual(var[valid_rows1])  
+})
+
+metric_names1 <- rownames(cor_matrix_numeric1)
+
+cov_cor_df1 <- data.frame(
+  Metric = metric_names1,
+  Correlation = cor_with_rfd,
+  CoeffiecientOfVariance = cv_compared_to_rfd
+)
+
+write_xlsx(cov_cor_df1, path = "Correlation_CoefOfVar_To_BreakingRFD.xlsx")
+
+```
+
+
+
+# Create the correlation and variance matrix for the selected columns
+cor_matrix_rfd <- cor(compare_to_rfd)
+
+#cv_rfd <- apply(compare_to_rfd, 2, cv_manual)
+cv_rfd <- cv_manual(data_numeric$braking_rfd_n_s)
+
+cor_with_braking_rfd <- cor_matrix_rfd[, "braking_rfd_n_s"]
+
+metric_names1 <- rownames(cor_matrix_rfd)
+
+cov_cor_df1 <- data.frame(
+  Metric = metric_names1,
+  Correlation = cor_with_braking_rfd,
+  CoeffiecientOfVariance = cv_rfd
+)
+
+write_xlsx(cov_cor_df1, path = "Correlation_CoefOfVar_To_BrakingRFD.xlsx")
+
+```
+
+
+we want: low coefficient of variance, high correlation, in eccentric category - something that will work better than rfd 
 
